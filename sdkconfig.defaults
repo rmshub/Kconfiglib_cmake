@@ -1,0 +1,3 @@
+
+# Disable BAR configuration
+CONFIG_BAR=n

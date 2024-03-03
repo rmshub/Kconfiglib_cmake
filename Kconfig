@@ -1,0 +1,9 @@
+menu "Configuration"
+    config FOO
+        bool "Enable/Disable FOO"
+        default n
+
+    config BAR
+        bool "Enable/Disable BAR"
+        default y
+endmenu
