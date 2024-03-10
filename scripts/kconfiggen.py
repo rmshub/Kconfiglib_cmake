@@ -4,7 +4,9 @@ import sys
 import tempfile
 import argparse
 import kconfiglib
+import json
 from menuconfig import menuconfig
+from subprocess import check_output, CalledProcessError
 
 AUTOHEADER_HEADER = """/*
  * Automatically generated file. DO NOT EDIT.
@@ -24,6 +26,15 @@ CONFIG_CMAKE_HEADER = """#
 # project configuration cmake include file
 #
 """
+
+
+def get_changed_files_list():
+    """ Get both modified and added files list """
+    try:
+        base_dir = check_output(['git', 'diff', '--name-only', 'HEAD'])
+    except CalledProcessError:
+        raise IOError('This folder not under git revision')
+    return base_dir.decode('utf-8').strip()
 
 
 def write_cmake(config, filename):
@@ -142,6 +153,21 @@ def main():
         help="Launch menuconfig in console"
     )
 
+    parser.add_argument(
+        "--env",
+        action="append",
+        default=[],
+        help="Environment to set when evaluating the config file",
+        metavar="NAME=VAL",
+    )
+
+    parser.add_argument(
+        "--env-file",
+        type=argparse.FileType("r"),
+        help="Optional file to load environment variables from. Contents "
+        "should be a JSON object where each key/value pair is a variable.",
+    )
+
     args = parser.parse_args()
 
     for fmt, filename in args.output:
@@ -151,6 +177,31 @@ def main():
                 % (fmt, OUTPUT_FORMATS.keys())
             )
             sys.exit(1)
+
+    try:
+        args.env = [
+            (name, value) for (name, value) in (e.split("=", 1) for e in args.env)
+        ]
+    except ValueError:
+        print(
+            "--env arguments must each contain =. To unset an environment variable, use 'ENV='"
+        )
+        sys.exit(1)
+
+    if args.env_file is not None:
+        env = json.load(args.env_file)
+        os.environ.update(env)
+
+    for name, value in args.env:
+        os.environ[name] = value
+
+    # delete generated config file if default file changed
+    for name in args.defaults:
+        if name in get_changed_files_list():
+            if os.path.exists(args.config):
+                print(f'{name} modiifed and {args.config} is deleted.')
+                os.remove(args.config)
+                break
 
     # set Kconfig enviroment variables
     os.environ["KCONFIG_CONFIG_HEADER"] = CONFIG_HEADER
