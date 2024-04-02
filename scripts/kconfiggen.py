@@ -31,10 +31,10 @@ CONFIG_CMAKE_HEADER = """#
 def get_changed_files_list():
     """ Get both modified and added files list """
     try:
-        base_dir = check_output(['git', 'diff', '--name-only', 'HEAD'])
+        files_list= check_output(['git', 'diff', '--name-only', 'HEAD'])
     except CalledProcessError:
         raise IOError('This folder not under git revision')
-    return base_dir.decode('utf-8').strip()
+    return files_list.decode('utf-8').strip()
 
 
 def write_cmake(config, filename):
@@ -199,7 +199,7 @@ def main():
     for name in args.defaults:
         if name in get_changed_files_list():
             if os.path.exists(args.config):
-                print(f'{name} modiifed and {args.config} is deleted.')
+                print(f'{name} modified and {args.config} is deleted.')
                 os.remove(args.config)
                 break
 
